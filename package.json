@@ -3,20 +3,33 @@
   "version": "1.1.0",
   "description": "N8N node for Airtable instant webhook triggers with view filtering. Forked from vwork Digital, enhanced by D1DX.",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "n8n",
+    "airtable",
+    "webhook",
+    "trigger",
+    "instant",
+    "real-time"
   ],
-    "publishConfig": {
-      "access": "public"
-    },
-  "license": "MIT",
-  "homepage": "https://vform.fillout.com/airtable-node-feedback",
-  "author": {
-    "name": "Jacob Vendramin",
-    "email": "jacob@vwork.digital"
+  "publishConfig": {
+    "access": "public"
   },
+  "license": "MIT",
+  "homepage": "https://github.com/D1DX/n8n-nodes-instant-airtable-trigger",
+  "author": {
+    "name": "D1DX",
+    "url": "https://d1dx.com"
+  },
+  "contributors": [
+    {
+      "name": "Jacob Vendramin",
+      "email": "jacob@vwork.digital",
+      "url": "https://vwork.digital"
+    }
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/jvendramin/instant-airtable-trigger-node.git"
+    "url": "https://github.com/D1DX/n8n-nodes-instant-airtable-trigger.git"
   },
   "engines": {
     "node": ">=20.11.0"
