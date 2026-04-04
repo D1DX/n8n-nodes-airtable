@@ -1,13 +1,21 @@
-# Instant Airtable Trigger for n8n
+# Airtable Nodes for n8n
 
-An n8n community node that triggers workflows instantly when Airtable records change — using real [Airtable webhooks](https://airtable.com/developers/web/api/webhooks-overview), not polling.
+A collection of n8n community nodes for Airtable — filling gaps in n8n's built-in Airtable support.
 
-This is a fork of [@vwork-digital/n8n-nodes-instant-airtable-trigger](https://www.npmjs.com/package/@vwork-digital/n8n-nodes-instant-airtable-trigger) by [Jacob Vendramin / vwork Digital](https://vwork.digital), with view filtering and improved UX.
+## Nodes
 
-## What's different from the original?
+### Instant Airtable Trigger
+
+Triggers workflows instantly when Airtable records change — using real [Airtable webhooks](https://airtable.com/developers/web/api/webhooks-overview), not polling.
+
+Based on [@vwork-digital/n8n-nodes-instant-airtable-trigger](https://www.npmjs.com/package/@vwork-digital/n8n-nodes-instant-airtable-trigger) by [Jacob Vendramin / vwork Digital](https://vwork.digital), with view filtering and improved UX.
+
+**What's different from the original:**
 
 - **View filtering** — scope the webhook to a specific Airtable view, so only changes to records visible in that view trigger the workflow. Use this to filter by user, status, or any view condition.
 - **Clearer UI** — all fields have descriptive helper text explaining what they do, including how webhooks work under the hood.
+
+*More nodes coming — this package is a home for any Airtable functionality missing from n8n's built-in nodes.*
 
 ## How it works
 
@@ -26,14 +34,14 @@ When you **deactivate** the workflow, the webhook is automatically deleted.
 
 1. Go to **Settings > Community Nodes** in your n8n instance
 2. Click **Install a community node**
-3. Enter `@d1dx/n8n-nodes-instant-airtable-trigger`
+3. Enter `@d1dx/n8n-nodes-airtable`
 4. Click **Install**
 
 Or via CLI:
 
 ```bash
 cd ~/.n8n
-npm install @d1dx/n8n-nodes-instant-airtable-trigger
+npm install @d1dx/n8n-nodes-airtable
 # Restart n8n
 ```
 
@@ -131,13 +139,11 @@ MIT — see [LICENSE.md](LICENSE.md)
 
 ## Version history
 
-### 1.1.0 (D1DX fork)
+### 1.0.0 (@d1dx/n8n-nodes-airtable)
 
-- Add view selector — scope webhook to a specific view via `recordChangeScope`
+- Initial release under D1DX scope
+- **Instant Airtable Trigger:** add view selector — scope webhook to a specific view via `recordChangeScope`
 - Rewrite all UI descriptions with clear helper text
 - Rename "Additional Fields" to "Advanced Options"
 - Add `getViews` loadOptions method
-
-### 1.0.2 (original by vwork Digital)
-
-- Last release of the original package
+- Based on `@vwork-digital/n8n-nodes-instant-airtable-trigger` v1.0.2
