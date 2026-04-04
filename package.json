@@ -1,7 +1,7 @@
 {
-  "name": "@vwork-digital/n8n-nodes-instant-airtable-trigger",
-  "version": "1.0.2",
-  "description": "N8N node for Airtable instant webhook triggers, instead of relying on polling in the native N8N Airtable trigger node. Made by vwork Digital.",
+  "name": "@d1dx/n8n-nodes-instant-airtable-trigger",
+  "version": "1.1.0",
+  "description": "N8N node for Airtable instant webhook triggers with view filtering. Forked from vwork Digital, enhanced by D1DX.",
   "keywords": [
     "n8n-community-node-package"
   ],
@@ -28,7 +28,7 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json"
+    "prepublishOnly": "echo 'Publishing pre-built dist/'"
   },
   "files": [
     "dist"

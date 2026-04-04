@@ -10,7 +10,7 @@ class AirtableTrigger {
             icon: 'file:nodelogo.svg',
             group: ['trigger'],
             version: 1,
-            description: 'Instantly handles Airtable events via webhooks. Made by vwork Digital.',
+            description: 'Triggers instantly when Airtable records change. Uses real Airtable webhooks — no polling. The webhook is registered automatically when you activate the workflow, and deleted when you deactivate it. Webhooks expire every 7 days — use the Airtable Webhooks Refresh workflow to keep them alive.',
             defaults: {
                 name: 'Instant Airtable Trigger',
             },
@@ -32,7 +32,7 @@ class AirtableTrigger {
             ],
             properties: [
                 {
-                    displayName: 'Base Name or ID',
+                    displayName: 'Base',
                     name: 'base',
                     type: 'options',
                     typeOptions: {
@@ -40,10 +40,10 @@ class AirtableTrigger {
                     },
                     required: true,
                     default: '',
-                    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+                    description: 'The Airtable base to watch. All bases accessible by your API token are listed.',
                 },
                 {
-                    displayName: 'Table Name or ID',
+                    displayName: 'Table',
                     name: 'table',
                     type: 'options',
                     typeOptions: {
@@ -52,10 +52,21 @@ class AirtableTrigger {
                     },
                     required: true,
                     default: '',
-                    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+                    description: 'The table to watch for changes.',
                 },
                 {
-                    displayName: 'Fields to Watch For Changes',
+                    displayName: 'View (Optional)',
+                    name: 'view',
+                    type: 'options',
+                    typeOptions: {
+                        loadOptionsMethod: 'getViews',
+                        loadOptionsDependsOn: ['base', 'table'],
+                    },
+                    default: '',
+                    description: 'Scope the webhook to a specific view. Only changes to records that are visible in this view will trigger the workflow. Use this to filter by user, status, or any view filter. Leave empty to watch all records in the table.',
+                },
+                {
+                    displayName: 'Fields to Watch',
                     name: 'fieldsToWatch',
                     type: 'multiOptions',
                     typeOptions: {
@@ -63,10 +74,10 @@ class AirtableTrigger {
                         loadOptionsDependsOn: ['base', 'table'],
                     },
                     default: [],
-                    description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+                    description: 'Only trigger when these specific fields change. If empty, any field change triggers the workflow. Tip: use a "Refresh" checkbox field to trigger on demand.',
                 },
                 {
-                    displayName: 'Extra Fields to Include in Output',
+                    displayName: 'Extra Fields in Output',
                     name: 'fieldsToInclude',
                     type: 'multiOptions',
                     typeOptions: {
@@ -74,14 +85,14 @@ class AirtableTrigger {
                         loadOptionsDependsOn: ['base', 'table'],
                     },
                     default: [],
-                    description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+                    description: 'Include these field values in the output alongside the changed field. Useful for getting record context (e.g. Title, Status) without a separate API call.',
                 },
                 {
-                    displayName: 'Include Previous Cell Values?',
+                    displayName: 'Include Previous Values',
                     name: 'includePreviousValues',
                     type: 'boolean',
                     default: true,
-                    description: 'Whether to include previous field values in the output',
+                    description: 'Whether to include the previous value of changed fields. Useful for detecting what changed (e.g. status went from "Active" to "Done").',
                 },
                 {
                     displayName: 'Event Types',
@@ -91,87 +102,99 @@ class AirtableTrigger {
                         {
                             name: 'Record Created',
                             value: 'add',
-                            description: 'Trigger when a record is created',
+                            description: 'A new record was added to the table (or entered the view)',
                         },
                         {
                             name: 'Record Updated',
                             value: 'update',
-                            description: 'Trigger when a record is updated',
+                            description: 'A field value changed on an existing record',
                         },
                         {
                             name: 'Record Deleted',
                             value: 'remove',
-                            description: 'Trigger when a record is deleted',
+                            description: 'A record was deleted (or left the view)',
                         },
                     ],
                     required: true,
                     default: ['update'],
-                    description: 'The events to listen for',
+                    description: 'Which record events should trigger this workflow. Most use cases only need "Record Updated".',
                 },
                 {
-                    displayName: 'Additional Fields',
+                    displayName: 'Advanced Options',
                     name: 'additionalFields',
                     type: 'collection',
-                    placeholder: 'Add Field',
+                    placeholder: 'Add Option',
                     default: {},
+                    description: 'Fine-tune what triggers the webhook. Most users don\'t need these.',
                     options: [
                         {
-                            displayName: 'Data Types',
+                            displayName: 'Change Types to Watch',
                             name: 'dataTypes',
                             type: 'multiOptions',
                             options: [
                                 {
-                                    name: 'Table Data (Record and Cell Value Changes)',
+                                    name: 'Record Data',
                                     value: 'tableData',
+                                    description: 'Cell value changes — the most common use case',
                                 },
                                 {
-                                    name: 'Table Fields (Field Changes)',
+                                    name: 'Field Schema',
                                     value: 'tableFields',
+                                    description: 'Field added, renamed, deleted, or type changed',
                                 },
                                 {
-                                    name: 'Table Metadata (Table Name and Description Changes)',
+                                    name: 'Table Metadata',
                                     value: 'tableMetadata',
+                                    description: 'Table name or description changed',
                                 },
                             ],
                             default: ['tableData'],
-                            description: 'Only generate payloads that contain changes affecting objects of these types',
+                            description: 'What kind of changes to listen for. Default: record data only.',
                         },
                         {
-                            displayName: 'From Sources',
+                            displayName: 'Filter by Change Source',
                             name: 'fromSources',
                             type: 'multiOptions',
                             options: [
                                 {
-                                    name: 'Anonymous User',
-                                    value: 'anonymousUser',
-                                },
-                                {
-                                    name: 'Automation (Via Automation Action)',
-                                    value: 'automation',
-                                },
-                                {
-                                    name: 'Client (User via Web or Mobile Clients)',
+                                    name: 'User (Web/Mobile)',
                                     value: 'client',
+                                    description: 'Changes made by a user in the Airtable UI',
                                 },
                                 {
-                                    name: 'Form Page Submission (Interface Forms)',
-                                    value: 'formPageSubmission',
-                                },
-                                {
-                                    name: 'Form Submission (Form View)',
-                                    value: 'formSubmission',
-                                },
-                                {
-                                    name: 'Public API (Via Airtable API)',
+                                    name: 'API',
                                     value: 'publicApi',
+                                    description: 'Changes made via the Airtable REST API',
                                 },
                                 {
-                                    name: 'Sync (Airtable Sync)',
+                                    name: 'Automation',
+                                    value: 'automation',
+                                    description: 'Changes made by an Airtable automation',
+                                },
+                                {
+                                    name: 'Form View',
+                                    value: 'formSubmission',
+                                    description: 'Submitted via a form view',
+                                },
+                                {
+                                    name: 'Interface Form',
+                                    value: 'formPageSubmission',
+                                    description: 'Submitted via an interface form page',
+                                },
+                                {
+                                    name: 'Sync',
                                     value: 'sync',
+                                    description: 'Changes from Airtable Sync',
                                 },
                                 {
-                                    name: 'System (System Events)',
+                                    name: 'System',
                                     value: 'system',
+                                    description: 'Internal Airtable system events',
+                                },
+                                {
+                                    name: 'Anonymous',
+                                    value: 'anonymousUser',
+                                    description: 'Changes by unauthenticated users (e.g. public forms)',
                                 },
                                 {
                                     name: 'Unknown',
@@ -179,18 +202,18 @@ class AirtableTrigger {
                                 },
                             ],
                             default: [],
-                            description: 'Only generate payloads for changes from these sources. If omitted, changes from all sources are reported.',
+                            description: 'Only trigger for changes from these sources. Leave empty to trigger on all sources (recommended).',
                         },
                         {
-                            displayName: 'Source Options',
+                            displayName: 'Source Options (JSON)',
                             name: 'sourceOptions',
                             type: 'string',
                             default: '',
-                            placeholder: '{"formPageSubmission":{"pageId":"page123"},"formSubmission":{"viewId":"view456"}}',
-                            description: 'Additional options for source filtering in JSON format. Allows filtering form view submissions by ViewId, or interface form submissions by PageId.',
+                            placeholder: '{"formSubmission":{"viewId":"viw..."}}',
+                            description: 'Advanced: filter form submissions by view ID or interface form submissions by page ID. JSON format. Most users don\'t need this.',
                         },
                         {
-                            displayName: 'Watch Schemas of Field IDs',
+                            displayName: 'Watch Field Schema Changes',
                             name: 'watchSchemasOfFieldIds',
                             type: 'multiOptions',
                             typeOptions: {
@@ -198,7 +221,7 @@ class AirtableTrigger {
                                 loadOptionsDependsOn: ['base', 'table'],
                             },
                             default: [],
-                            description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+                            description: 'Trigger when the schema of these fields changes (e.g. field renamed, type changed, options modified). Requires "Field Schema" in Change Types above.',
                         },
                     ],
                 },
@@ -233,6 +256,27 @@ class AirtableTrigger {
                             name: table.name,
                             value: table.id,
                             description: `${table.fields ? table.fields.length : 0} fields available`,
+                        }));
+                    }
+                    catch (error) {
+                        return [];
+                    }
+                },
+                async getViews() {
+                    const baseId = this.getNodeParameter('base', '');
+                    const tableId = this.getNodeParameter('table', '');
+                    if (!baseId || !tableId) {
+                        return [];
+                    }
+                    try {
+                        const views = await GenericFunctions_1.getViews.call(this, baseId, tableId);
+                        if (!views || views.length === 0) {
+                            return [];
+                        }
+                        return views.map(view => ({
+                            name: view.name,
+                            value: view.id,
+                            description: `Type: ${view.type}`,
                         }));
                     }
                     catch (error) {
@@ -289,6 +333,7 @@ class AirtableTrigger {
                     const webhookData = this.getWorkflowStaticData('node');
                     const baseId = this.getNodeParameter('base');
                     const tableId = this.getNodeParameter('table');
+                    const viewId = this.getNodeParameter('view', '');
                     const fieldsToWatch = this.getNodeParameter('fieldsToWatch', []);
                     const includePreviousValues = this.getNodeParameter('includePreviousValues');
                     const eventTypes = this.getNodeParameter('eventTypes', []);
@@ -301,7 +346,7 @@ class AirtableTrigger {
                                 options: {
                                     filters: {
                                         dataTypes: ['tableData'],
-                                        recordChangeScope: tableId,
+                                        recordChangeScope: viewId || tableId,
                                         changeTypes: eventTypes,
                                     },
                                     includes: {

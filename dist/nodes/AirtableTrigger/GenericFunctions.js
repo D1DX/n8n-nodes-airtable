@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.airtableApiRequest = airtableApiRequest;
 exports.getBases = getBases;
 exports.getFields = getFields;
+exports.getViews = getViews;
 exports.extractFieldInfo = extractFieldInfo;
 exports.extractFieldSchemaInfo = extractFieldSchemaInfo;
 exports.extractTableMetadataInfo = extractTableMetadataInfo;
@@ -43,6 +44,27 @@ async function getBases() {
     const endpoint = '/meta/bases';
     const { bases } = await airtableApiRequest.call(this, 'GET', endpoint);
     return bases;
+}
+async function getViews(baseId, tableId) {
+    try {
+        const endpoint = `/meta/bases/${baseId}/tables`;
+        const response = await airtableApiRequest.call(this, 'GET', endpoint);
+        if (!response.tables || !Array.isArray(response.tables)) {
+            return [];
+        }
+        const table = response.tables.find((t) => t.id === tableId);
+        if (!table || !table.views || !Array.isArray(table.views)) {
+            return [];
+        }
+        return table.views.map((view) => ({
+            id: view.id,
+            name: view.name,
+            type: view.type || 'unknown',
+        }));
+    }
+    catch (error) {
+        throw error;
+    }
 }
 async function getFields(baseId, tableId) {
     try {
