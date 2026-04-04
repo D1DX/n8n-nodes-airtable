@@ -5,14 +5,14 @@ const GenericFunctions_1 = require("./GenericFunctions");
 class AirtableTrigger {
     constructor() {
         this.description = {
-            displayName: 'Instant Airtable Trigger',
+            displayName: 'Airtable Webhook',
             name: 'airtableTrigger',
-            icon: 'file:nodelogo.svg',
+            icon: 'file:airtable.svg',
             group: ['trigger'],
             version: 1,
             description: 'Triggers instantly when Airtable records change. Uses real Airtable webhooks — no polling. The webhook is registered automatically when you activate the workflow, and deleted when you deactivate it. Webhooks expire every 7 days — use the Airtable Webhooks Refresh workflow to keep them alive.',
             defaults: {
-                name: 'Instant Airtable Trigger',
+                name: 'Airtable Webhook',
             },
             inputs: [],
             outputs: [{ type: "main" }],
