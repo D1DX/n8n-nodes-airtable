@@ -1,6 +1,12 @@
 # Airtable Nodes for n8n
 
-A collection of n8n community nodes for Airtable — filling gaps in n8n's built-in Airtable support.
+[![Author](https://img.shields.io/badge/Author-Daniel_Rudaev-000000?style=flat)](https://github.com/daniel-rudaev)
+[![Studio](https://img.shields.io/badge/Studio-D1DX-000000?style=flat)](https://d1dx.com)
+[![n8n](https://img.shields.io/badge/n8n-Community_Node-FF6D5A?style=flat&logo=n8n&logoColor=white)](https://www.npmjs.com/package/@d1dx/n8n-nodes-airtable)
+[![Airtable](https://img.shields.io/badge/Airtable-Webhooks-18BFFF?style=flat&logo=airtable&logoColor=white)](https://airtable.com/developers/web/api/webhooks-overview)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat)](./LICENSE.md)
+
+A collection of n8n community nodes for Airtable by [D1DX](https://d1dx.com) — filling gaps in n8n's built-in Airtable support.
 
 ## Nodes
 
