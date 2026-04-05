@@ -1,4 +1,4 @@
-# Airtable Nodes for n8n
+# Airtable Webhook for n8n
 
 [![Author](https://img.shields.io/badge/Author-Daniel_Rudaev-000000?style=flat)](https://github.com/daniel-rudaev)
 [![Studio](https://img.shields.io/badge/Studio-D1DX-000000?style=flat)](https://d1dx.com)
@@ -6,35 +6,19 @@
 [![Airtable](https://img.shields.io/badge/Airtable-Webhooks-18BFFF?style=flat&logo=airtable&logoColor=white)](https://airtable.com/developers/web/api/webhooks-overview)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](./LICENSE.md)
 
-A collection of n8n community nodes for Airtable by [D1DX](https://d1dx.com) — filling gaps in n8n's built-in Airtable support.
+n8n community node that triggers workflows instantly when Airtable records change — using real [Airtable webhooks](https://airtable.com/developers/web/api/webhooks-overview), not polling.
 
-## Nodes
+Originally forked from [@vwork-digital/n8n-nodes-instant-airtable-trigger](https://www.npmjs.com/package/@vwork-digital/n8n-nodes-instant-airtable-trigger), fully rewritten by [D1DX](https://d1dx.com).
 
-### Instant Airtable Trigger
+## How It Works
 
-Triggers workflows instantly when Airtable records change — using real [Airtable webhooks](https://airtable.com/developers/web/api/webhooks-overview), not polling.
+1. **Activate** a workflow with this trigger — registers an [Airtable webhook](https://airtable.com/developers/web/api/create-a-webhook) on your base
+2. Airtable sends a notification ping to n8n on every matching change
+3. The node fetches the [webhook payloads](https://airtable.com/developers/web/api/get-webhook-payloads) with cursor-based pagination
+4. Payloads are parsed into flat per-record items with field names resolved
+5. **Deactivate** the workflow — webhook is automatically deleted
 
-Based on [@vwork-digital/n8n-nodes-instant-airtable-trigger](https://www.npmjs.com/package/@vwork-digital/n8n-nodes-instant-airtable-trigger) by [Jacob Vendramin / vwork Digital](https://vwork.digital), with view filtering and improved UX.
-
-**What's different from the original:**
-
-- **View filtering** — scope the webhook to a specific Airtable view, so only changes to records visible in that view trigger the workflow. Use this to filter by user, status, or any view condition.
-- **Clearer UI** — all fields have descriptive helper text explaining what they do, including how webhooks work under the hood.
-
-*More nodes coming — this package is a home for any Airtable functionality missing from n8n's built-in nodes.*
-
-## How it works
-
-When you **activate** a workflow with this trigger node, it:
-
-1. Registers an [Airtable webhook](https://airtable.com/developers/web/api/create-a-webhook) on your base via the API
-2. Airtable sends a notification to n8n whenever a matching change happens
-3. n8n fetches the [webhook payload](https://airtable.com/developers/web/api/get-webhook-payloads) with the actual change data
-4. Your workflow runs with the changed record data
-
-When you **deactivate** the workflow, the webhook is automatically deleted.
-
-**Important:** Airtable webhooks expire every 7 days. You need a separate scheduled workflow to [refresh them](https://airtable.com/developers/web/api/refresh-a-webhook) — or they'll stop firing silently.
+**Important:** Airtable webhooks expire every 7 days. Use a separate scheduled workflow to [refresh them](https://airtable.com/developers/web/api/refresh-a-webhook).
 
 ## Installation
 
@@ -53,31 +37,41 @@ npm install @d1dx/n8n-nodes-airtable
 
 ## Configuration
 
-### Required fields
+All field names map directly to the [Airtable Webhooks API specification](https://airtable.com/developers/web/api/model/webhooks-specification).
 
-| Field | Description |
-|-------|-------------|
-| **Base** | The Airtable base to watch. All bases accessible by your API token are listed. |
-| **Table** | The table to watch for changes. |
+### Core Fields (always visible)
 
-### Optional fields
+| Field | Airtable API | Description |
+|-------|-------------|-------------|
+| **Base** | — | Dropdown of all bases (via meta API) |
+| **Table** | — | Dropdown of tables in selected base |
+| **View** | `recordChangeScope` | Scope to a specific view. "Add" = entered view, "Remove" = left view. Form/List views not supported. Leave empty for entire table. |
+| **Change Types** | `changeTypes` | Add / Update / Remove. Leave empty = all. Sent server-side to Airtable. |
 
-| Field | Description |
-|-------|-------------|
-| **View** | Scope the webhook to a specific view. Only changes to records in this view trigger the workflow. Uses Airtable's [`recordChangeScope`](https://airtable.com/developers/web/api/model/webhooks-specification) with the view ID. Leave empty to watch all records. |
-| **Fields to Watch** | Only trigger when these specific fields change. If empty, any field change triggers. Tip: add a "Refresh" checkbox field to trigger on demand. |
-| **Extra Fields in Output** | Include these field values alongside the changed field — saves a separate API call to get record context. |
-| **Include Previous Values** | Show what the field value was before the change. Useful for detecting transitions (e.g. status "Active" to "Done"). |
-| **Event Types** | Record Created, Record Updated, Record Deleted. Most use cases only need "Updated". |
+### Shown when "Update" is selected
 
-### Advanced options
+| Field | Airtable API | Description |
+|-------|-------------|-------------|
+| **Fields to Watch** | `watchDataInFieldIds` | Only trigger on changes to these fields. Leave empty = all fields. **Warning:** webhook permanently stops if a listed field is deleted. |
+| **Include Previous Values** | `includePreviousCellValues` | Include the previous value alongside current for changed fields. |
 
-| Option | Description |
-|--------|-------------|
-| **Change Types to Watch** | Record data (default), field schema changes, or table metadata changes. |
-| **Filter by Change Source** | Only trigger for changes from specific sources: UI, API, automations, forms, sync, etc. |
-| **Source Options (JSON)** | Filter form submissions by view ID or interface forms by page ID. |
-| **Watch Field Schema Changes** | Trigger when specific fields are renamed, retyped, or have options modified. |
+### Output Options (always visible)
+
+| Field | Airtable API | Description |
+|-------|-------------|-------------|
+| **Fields to Include in Output** | `includeCellValuesInFieldIds` | Always include these field values, even if unchanged. Select "All fields" to send `"all"` to API. Safe if a listed field is deleted. |
+| **Use Field Names** | — | Resolve field IDs (e.g. `fldABC123`) to human names (e.g. `Status`) in output. |
+
+### Advanced Options
+
+| Field | Airtable API | Description |
+|-------|-------------|-------------|
+| **Data Types** | `dataTypes` | `tableData` (default), `tableFields`, `tableMetadata`. Can combine multiple. |
+| **From Sources** | `fromSources` | Filter by source: `client`, `publicApi`, `automation`, `formSubmission`, `formPageSubmission`, `sync`, `system`, `anonymousUser`, `unknown`. Empty = all. |
+| **Form Submission View ID** | `sourceOptions.formSubmission.viewId` | Filter form submissions to a specific form view. Only relevant when "Form Submission" is in From Sources. |
+| **Form Page Submission Page ID** | `sourceOptions.formPageSubmission.pageId` | Filter interface page submissions to a specific page. Only relevant when "Form Page Submission" is in From Sources. |
+| **Watch Field Schema Changes** | `watchSchemasOfFieldIds` | Only trigger on schema changes for these fields. Requires `tableFields` data type. **Warning:** webhook stops if field is deleted. |
+| **Include Previous Field Definitions** | `includePreviousFieldDefinitions` | Include previous field name/type in field change payloads. Requires `tableFields` data type. |
 
 ## Credentials
 
@@ -85,53 +79,92 @@ You need an **Airtable Personal Access Token** (PAT):
 
 1. Go to [airtable.com/create/tokens](https://airtable.com/create/tokens)
 2. Create a token with these scopes:
-   - `webhook:manage` — required to register and delete webhooks
-   - `data.records:read` — required to read webhook payloads
-   - `schema.bases:read` — required for the base/table/view/field dropdowns
+   - `webhook:manage` — register and delete webhooks
+   - `data.records:read` — read webhook payloads
+   - `schema.bases:read` — populate base/table/view/field dropdowns
 3. Grant access to the bases you want to watch
 4. In n8n, create an "Airtable API" credential and paste the token
 
-## Output format
+## Output Format
 
-Each output item represents one field change on one record:
+One item per event. All items include `eventType`, `recordId`, `tableId`, `source`, `changedBy`, `timestamp`.
 
+### Record events (`tableData`)
+
+**Created:**
 ```json
 {
+  "eventType": "created",
   "recordId": "recXXXXXXXXXXXXXX",
-  "fieldChanged": {
-    "id": "fldXXXXXXXXXXXXXX"
-  },
-  "values": {
-    "current": "New value",
-    "previous": "Old value"
-  },
-  "includedData": [
-    { "fieldId": "fldYYYY", "value": "Extra field value" }
-  ],
-  "changeType": "recordFieldValue",
   "tableId": "tblXXXXXXXXXXXXXX",
-  "changedBy": {
-    "userId": "usrXXXX",
-    "userName": "John Doe",
-    "userEmail": "john@example.com"
-  },
-  "timestamp": "2026-04-04T12:00:00.000Z"
+  "viewId": "viwXXXXXXXXXXXXXX",
+  "createdTime": "2026-04-05T12:00:00.000Z",
+  "fields": { "Status": "New", "Name": "Example" },
+  "source": "client",
+  "changedBy": { "userId": "usrXXXX", "userName": "John", "userEmail": "john@example.com" },
+  "timestamp": "2026-04-05T12:00:00.000Z"
 }
 ```
 
-## Limits and gotchas
+**Updated:**
+```json
+{
+  "eventType": "updated",
+  "recordId": "recXXXXXXXXXXXXXX",
+  "tableId": "tblXXXXXXXXXXXXXX",
+  "changedFields": ["Status"],
+  "current": { "Status": "Done" },
+  "previous": { "Status": "Active" },
+  "unchanged": { "Name": "Example" },
+  "source": "client",
+  "changedBy": { "userId": "usrXXXX", "userName": "John", "userEmail": "john@example.com" },
+  "timestamp": "2026-04-05T12:00:00.000Z"
+}
+```
 
-- **10 webhooks per base** — Airtable enforces this. Each active workflow with this trigger uses one webhook. [Docs](https://airtable.com/developers/web/api/create-a-webhook)
-- **Webhooks expire in 7 days** — refresh them with a scheduled workflow, or they stop silently
-- **2 API calls per trigger** — listing webhooks + fetching payloads. Counts toward the 5 req/sec rate limit.
-- **Creator permissions required** — the PAT owner must have Creator access to the base to register webhooks
-- **View filtering is server-side** — Airtable only sends notifications for records in the view. If a record leaves the view (e.g. status changes), it counts as a "remove" event.
+**Deleted:**
+```json
+{
+  "eventType": "deleted",
+  "recordId": "recXXXXXXXXXXXXXX",
+  "tableId": "tblXXXXXXXXXXXXXX",
+  "source": "client",
+  "timestamp": "2026-04-05T12:00:00.000Z"
+}
+```
+
+### Field schema events (`tableFields`)
+
+| eventType | Key fields |
+|-----------|-----------|
+| `fieldCreated` | `fieldId`, `name`, `type` |
+| `fieldChanged` | `fieldId`, `current`, `previous` |
+| `fieldDeleted` | `fieldId` |
+
+### Table metadata events (`tableMetadata`)
+
+| eventType | Key fields |
+|-----------|-----------|
+| `metadataChanged` | `current` (name, description), `previous` |
+
+### Error events
+
+| eventType | Key fields |
+|-----------|-----------|
+| `error` | `code`: `INVALID_FILTERS`, `INVALID_HOOK`, or `INTERNAL_ERROR` |
+
+## Gotchas
+
+- **View-scoped payloads have different structure.** When `recordChangeScope` is a view, Airtable nests records inside `changedViewsById` instead of directly on the table. The node handles this transparently.
+- **10 webhooks per base.** Each active workflow uses one webhook. Plan accordingly.
+- **Webhooks expire in 7 days.** Refresh them or they stop silently.
+- **Field deletion kills the webhook.** If a field in `watchDataInFieldIds` or `watchSchemasOfFieldIds` is deleted, the webhook enters a permanent error state. Must deactivate and reactivate. Exception: `includeCellValuesInFieldIds` is safe — deleted fields are silently ignored.
+- **Creator permissions required.** The PAT owner must have Creator access to register webhooks.
+- **Community node updates require n8n restart.** n8n loads node code at startup, not dynamically.
 
 ## Credits
 
-Originally created by [Jacob Vendramin](https://github.com/jvendramin) at [vwork Digital](https://vwork.digital) as `@vwork-digital/n8n-nodes-instant-airtable-trigger` (MIT license).
-
-Forked and enhanced by [D1DX](https://d1dx.com) with view filtering and improved documentation.
+Originally created by [Jacob Vendramin](https://github.com/jvendramin) at [vwork Digital](https://vwork.digital) as `@vwork-digital/n8n-nodes-instant-airtable-trigger` (MIT license). Forked and rewritten by [D1DX](https://d1dx.com).
 
 ## License
 
@@ -140,16 +173,6 @@ MIT — see [LICENSE.md](LICENSE.md)
 ## Resources
 
 - [Airtable Webhooks API](https://airtable.com/developers/web/api/webhooks-overview)
-- [Airtable Webhook Specification](https://airtable.com/developers/web/api/model/webhooks-specification)
+- [Airtable Create Webhook](https://airtable.com/developers/web/api/create-a-webhook)
+- [Airtable Webhook Payloads](https://airtable.com/developers/web/api/get-webhook-payloads)
 - [n8n Community Nodes](https://docs.n8n.io/integrations/community-nodes/)
-
-## Version history
-
-### 1.0.0 (@d1dx/n8n-nodes-airtable)
-
-- Initial release under D1DX scope
-- **Instant Airtable Trigger:** add view selector — scope webhook to a specific view via `recordChangeScope`
-- Rewrite all UI descriptions with clear helper text
-- Rename "Additional Fields" to "Advanced Options"
-- Add `getViews` loadOptions method
-- Based on `@vwork-digital/n8n-nodes-instant-airtable-trigger` v1.0.2
