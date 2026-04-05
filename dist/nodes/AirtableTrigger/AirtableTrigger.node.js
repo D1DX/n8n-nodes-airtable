@@ -561,10 +561,14 @@ class AirtableTrigger {
                 }
             }
             webhookData.lastCursor = cursorForNextPayload;
+            console.log('[AirtableTrigger] cursorForNextPayload:', cursorForNextPayload);
             const payloadEndpoint = `/bases/${baseId}/webhooks/${webhookId}/payloads`;
             const queryParams = { cursor: cursorForNextPayload - 1 };
+            console.log('[AirtableTrigger] fetching payloads, cursor:', queryParams.cursor);
             const payloadsResponse = await GenericFunctions_1.airtableApiRequest.call(this, 'GET', payloadEndpoint, {}, queryParams);
+            console.log("[AirtableTrigger] payloads count:", payloadsResponse.payloads ? payloadsResponse.payloads.length : "null");
             if (!payloadsResponse.payloads || payloadsResponse.payloads.length === 0) {
+                console.log("[AirtableTrigger] no payloads, returning empty");
                 return {};
             }
 
@@ -731,7 +735,9 @@ class AirtableTrigger {
                     });
                 }
             }
+            console.log("[AirtableTrigger] formattedPayloads count:", formattedPayloads.length);
             if (formattedPayloads.length === 0) {
+                console.log("[AirtableTrigger] no formatted payloads");
                 return {};
             }
             return {
@@ -741,6 +747,7 @@ class AirtableTrigger {
             };
         }
         catch (error) {
+            console.log("[AirtableTrigger] webhook() error:", error.message || error);
             return {
                 workflowData: [
                     this.helpers.returnJsonArray([req.body]),
