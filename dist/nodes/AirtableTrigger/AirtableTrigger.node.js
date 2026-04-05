@@ -208,12 +208,18 @@ class AirtableTrigger {
                             description: 'Only trigger for changes from these sources. Leave empty to trigger on all sources. Tip: exclude "API" to prevent loops if your workflow writes back to Airtable.',
                         },
                         {
-                            displayName: 'Source Options (JSON)',
-                            name: 'sourceOptions',
+                            displayName: 'Form Submission View ID',
+                            name: 'formSubmissionViewId',
                             type: 'string',
                             default: '',
-                            placeholder: '{"formSubmission":{"viewId":"viw..."}}',
-                            description: 'Advanced: filter form submissions by view ID or interface form submissions by page ID. JSON format.',
+                            description: 'Only trigger for submissions from this specific form view (ViewId). Only applies when "Form View" is selected in Filter by Change Source.',
+                        },
+                        {
+                            displayName: 'Form Page Submission Page ID',
+                            name: 'formPageSubmissionPageId',
+                            type: 'string',
+                            default: '',
+                            description: 'Only trigger for submissions from this specific interface page (PageId). Only applies when "Interface Form" is selected in Filter by Change Source.',
                         },
                         {
                             displayName: 'Watch Field Schema Changes',
@@ -410,14 +416,15 @@ class AirtableTrigger {
                         if (additionalFields.fromSources && Array.isArray(additionalFields.fromSources) && additionalFields.fromSources.length > 0) {
                             body.specification.options.filters.fromSources = additionalFields.fromSources;
                         }
-                        if (additionalFields.sourceOptions) {
-                            try {
-                                const sourceOptions = JSON.parse(additionalFields.sourceOptions);
-                                body.specification.options.filters.sourceOptions = sourceOptions;
-                            }
-                            catch (error) {
-                                // Invalid JSON — skip
-                            }
+                        const sourceOptions = {};
+                        if (additionalFields.formSubmissionViewId) {
+                            sourceOptions.formSubmission = { viewId: additionalFields.formSubmissionViewId };
+                        }
+                        if (additionalFields.formPageSubmissionPageId) {
+                            sourceOptions.formPageSubmission = { pageId: additionalFields.formPageSubmissionPageId };
+                        }
+                        if (Object.keys(sourceOptions).length > 0) {
+                            body.specification.options.filters.sourceOptions = sourceOptions;
                         }
                         if (additionalFields.watchSchemasOfFieldIds && Array.isArray(additionalFields.watchSchemasOfFieldIds) && additionalFields.watchSchemasOfFieldIds.length > 0) {
                             body.specification.options.filters.watchSchemasOfFieldIds = additionalFields.watchSchemasOfFieldIds;
