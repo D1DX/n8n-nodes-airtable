@@ -1,6 +1,6 @@
 {
   "name": "@d1dx/n8n-nodes-airtable",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "n8n community nodes for Airtable — instant webhook triggers with view filtering, and more. By D1DX.",
   "keywords": [
     "n8n-community-node-package",
@@ -52,7 +52,8 @@
       "dist/credentials/AirtableApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/AirtableTrigger/AirtableTrigger.node.js"
+      "dist/nodes/AirtableTrigger/AirtableTrigger.node.js",
+      "dist/nodes/AirtableWebhook/AirtableWebhookTrigger.node.js"
     ]
   },
   "devDependencies": {
