@@ -377,11 +377,8 @@ class AirtableTrigger {
         this.webhookMethods = {
             default: {
                 async checkExists() {
-                    console.log('[AirtableTrigger] checkExists() called');
                     const webhookData = this.getWorkflowStaticData('node');
-                    console.log('[AirtableTrigger] webhookId:', webhookData.webhookId);
                     if (webhookData.webhookId === undefined) {
-                        console.log('[AirtableTrigger] no webhookId, returning false');
                         return false;
                     }
                     try {
@@ -400,12 +397,9 @@ class AirtableTrigger {
                     }
                 },
                 async create() {
-                    console.log('[AirtableTrigger] create() called');
                     const webhookUrl = this.getNodeWebhookUrl('default');
-                    console.log('[AirtableTrigger] webhookUrl:', webhookUrl);
                     const webhookData = this.getWorkflowStaticData('node');
                     const baseId = this.getNodeParameter('base');
-                    console.log('[AirtableTrigger] baseId:', baseId);
                     const tableId = this.getNodeParameter('table');
                     const viewId = this.getNodeParameter('view', '');
                     const fieldsToWatch = this.getNodeParameter('fieldsToWatch', []);
@@ -477,9 +471,7 @@ class AirtableTrigger {
                                 },
                             },
                         };
-                        console.log('[AirtableTrigger] registering webhook, body:', JSON.stringify(body, null, 2));
                         const response = await GenericFunctions_1.airtableApiRequest.call(this, 'POST', endpoint, body);
-                        console.log('[AirtableTrigger] webhook created:', response.id);
                         webhookData.webhookId = response.id;
                         webhookData.baseId = baseId;
                         webhookData.tableId = tableId;
@@ -491,7 +483,6 @@ class AirtableTrigger {
                         return true;
                     }
                     catch (error) {
-                        console.log('[AirtableTrigger] create() error:', error.message || error);
                         throw error;
                     }
                 },
@@ -524,9 +515,7 @@ class AirtableTrigger {
         var _a, _b;
         const req = this.getRequestObject();
         const webhookData = this.getWorkflowStaticData('node');
-        console.log('[AirtableTrigger] webhook() called, body:', JSON.stringify(req.body));
         if (!req.body || !req.body.base || !req.body.webhook) {
-            console.log('[AirtableTrigger] webhook() rejected — missing base or webhook in body');
             return {};
         }
         try {
@@ -561,14 +550,10 @@ class AirtableTrigger {
                 }
             }
             webhookData.lastCursor = cursorForNextPayload;
-            console.log('[AirtableTrigger] cursorForNextPayload:', cursorForNextPayload);
             const payloadEndpoint = `/bases/${baseId}/webhooks/${webhookId}/payloads`;
             const queryParams = { cursor: cursorForNextPayload - 1 };
-            console.log('[AirtableTrigger] fetching payloads, cursor:', queryParams.cursor);
             const payloadsResponse = await GenericFunctions_1.airtableApiRequest.call(this, 'GET', payloadEndpoint, {}, queryParams);
-            console.log("[AirtableTrigger] payloads count:", payloadsResponse.payloads ? payloadsResponse.payloads.length : "null");
             if (!payloadsResponse.payloads || payloadsResponse.payloads.length === 0) {
-                console.log("[AirtableTrigger] no payloads, returning empty");
                 return {};
             }
 
@@ -600,7 +585,6 @@ class AirtableTrigger {
 
             const formattedPayloads = [];
             for (const payload of payloadsResponse.payloads) {
-                console.log("[AirtableTrigger] raw payload:", JSON.stringify(payload));
                 const source = payload.actionMetadata ? payload.actionMetadata.source : undefined;
                 const changedBy = extractChangedBy(payload);
 
@@ -661,6 +645,64 @@ class AirtableTrigger {
                                     changedBy,
                                     timestamp: payload.timestamp,
                                 });
+                            }
+                        }
+
+                        // View-scoped record changes (when recordChangeScope is a view)
+                        if (tableData.changedViewsById) {
+                            for (const viewId in tableData.changedViewsById) {
+                                const viewData = tableData.changedViewsById[viewId];
+                                if (viewData.createdRecordsById && eventTypes.includes('created')) {
+                                    for (const recordId in viewData.createdRecordsById) {
+                                        const record = viewData.createdRecordsById[recordId];
+                                        formattedPayloads.push({
+                                            eventType: 'created',
+                                            recordId,
+                                            tableId,
+                                            viewId,
+                                            createdTime: record.createdTime,
+                                            fields: resolveCellValues(record.cellValuesByFieldId),
+                                            source,
+                                            changedBy,
+                                            timestamp: payload.timestamp,
+                                        });
+                                    }
+                                }
+                                if (viewData.changedRecordsById && eventTypes.includes('updated')) {
+                                    for (const recordId in viewData.changedRecordsById) {
+                                        const recordData = viewData.changedRecordsById[recordId];
+                                        const currentFields = resolveCellValues(recordData.current ? recordData.current.cellValuesByFieldId : null);
+                                        const previousFields = resolveCellValues(recordData.previous ? recordData.previous.cellValuesByFieldId : null);
+                                        const unchangedFields = resolveCellValues(recordData.unchanged ? recordData.unchanged.cellValuesByFieldId : null);
+                                        const changedFields = Object.keys(currentFields);
+                                        formattedPayloads.push({
+                                            eventType: 'updated',
+                                            recordId,
+                                            tableId,
+                                            viewId,
+                                            changedFields,
+                                            current: currentFields,
+                                            previous: previousFields,
+                                            unchanged: unchangedFields,
+                                            source,
+                                            changedBy,
+                                            timestamp: payload.timestamp,
+                                        });
+                                    }
+                                }
+                                if (viewData.destroyedRecordIds && eventTypes.includes('deleted')) {
+                                    for (const recordId of viewData.destroyedRecordIds) {
+                                        formattedPayloads.push({
+                                            eventType: 'deleted',
+                                            recordId,
+                                            tableId,
+                                            viewId,
+                                            source,
+                                            changedBy,
+                                            timestamp: payload.timestamp,
+                                        });
+                                    }
+                                }
                             }
                         }
 
@@ -736,9 +778,7 @@ class AirtableTrigger {
                     });
                 }
             }
-            console.log("[AirtableTrigger] formattedPayloads count:", formattedPayloads.length);
             if (formattedPayloads.length === 0) {
-                console.log("[AirtableTrigger] no formatted payloads");
                 return {};
             }
             return {
@@ -748,7 +788,6 @@ class AirtableTrigger {
             };
         }
         catch (error) {
-            console.log("[AirtableTrigger] webhook() error:", error.message || error);
             return {
                 workflowData: [
                     this.helpers.returnJsonArray([req.body]),
