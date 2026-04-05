@@ -55,7 +55,7 @@ class AirtableTrigger {
                     description: 'The table to watch for changes.',
                 },
                 {
-                    displayName: 'View (Optional)',
+                    displayName: 'View',
                     name: 'view',
                     type: 'options',
                     typeOptions: {
@@ -63,7 +63,32 @@ class AirtableTrigger {
                         loadOptionsDependsOn: ['base', 'table'],
                     },
                     default: '',
-                    description: 'Scope the webhook to a specific view. Only changes to records that are visible in this view will trigger the workflow. Use this to filter by user, status, or any view filter. Leave empty to watch all records in the table.',
+                    description: 'Scope the webhook to a specific view. Only changes to records visible in this view will trigger the workflow. When scoped to a view, you also get notified when records enter or leave the view. Leave as "All records" to watch the entire table.',
+                },
+                {
+                    displayName: 'Event Types',
+                    name: 'eventTypes',
+                    type: 'multiOptions',
+                    options: [
+                        {
+                            name: 'Record Created',
+                            value: 'created',
+                            description: 'A new record was added to the table (or entered the view)',
+                        },
+                        {
+                            name: 'Record Updated',
+                            value: 'updated',
+                            description: 'A field value changed on an existing record',
+                        },
+                        {
+                            name: 'Record Deleted',
+                            value: 'deleted',
+                            description: 'A record was deleted from the table (or left the view)',
+                        },
+                    ],
+                    required: true,
+                    default: ['created', 'updated', 'deleted'],
+                    description: 'Which record events should trigger this workflow.',
                 },
                 {
                     displayName: 'Fields to Watch',
@@ -74,50 +99,32 @@ class AirtableTrigger {
                         loadOptionsDependsOn: ['base', 'table'],
                     },
                     default: [],
-                    description: 'Only trigger when these specific fields change. If empty, any field change triggers the workflow. Tip: use a "Refresh" checkbox field to trigger on demand.',
+                    description: 'Only trigger when these specific fields change. If empty, any field change triggers the workflow. Tip: use a "Refresh" checkbox field to trigger on demand. Only applies to "Record Updated" events.',
                 },
                 {
-                    displayName: 'Extra Fields in Output',
+                    displayName: 'Fields to Include in Output',
                     name: 'fieldsToInclude',
                     type: 'multiOptions',
                     typeOptions: {
-                        loadOptionsMethod: 'getFields',
+                        loadOptionsMethod: 'getFieldsWithAll',
                         loadOptionsDependsOn: ['base', 'table'],
                     },
                     default: [],
-                    description: 'Include these field values in the output alongside the changed field. Useful for getting record context (e.g. Title, Status) without a separate API call.',
+                    description: 'Include these field values in the output. Select "All fields" to include everything. Without this, you only get record IDs and changed field IDs — no actual values.',
+                },
+                {
+                    displayName: 'Use Field Names',
+                    name: 'useFieldNames',
+                    type: 'boolean',
+                    default: true,
+                    description: 'Whether to use human-readable field names (e.g. "Status", "Due Date") instead of field IDs (e.g. "fldABC123") in the output. Enable this for easier use in downstream nodes.',
                 },
                 {
                     displayName: 'Include Previous Values',
                     name: 'includePreviousValues',
                     type: 'boolean',
                     default: true,
-                    description: 'Whether to include the previous value of changed fields. Useful for detecting what changed (e.g. status went from "Active" to "Done").',
-                },
-                {
-                    displayName: 'Event Types',
-                    name: 'eventTypes',
-                    type: 'multiOptions',
-                    options: [
-                        {
-                            name: 'Record Created',
-                            value: 'add',
-                            description: 'A new record was added to the table (or entered the view)',
-                        },
-                        {
-                            name: 'Record Updated',
-                            value: 'update',
-                            description: 'A field value changed on an existing record',
-                        },
-                        {
-                            name: 'Record Deleted',
-                            value: 'remove',
-                            description: 'A record was deleted (or left the view)',
-                        },
-                    ],
-                    required: true,
-                    default: ['update'],
-                    description: 'Which record events should trigger this workflow. Most use cases only need "Record Updated".',
+                    description: 'Whether to include the previous value of changed fields. Useful for detecting what changed (e.g. status went from "Active" to "Done"). Only applies to "Record Updated" events.',
                 },
                 {
                     displayName: 'Advanced Options',
@@ -128,7 +135,7 @@ class AirtableTrigger {
                     description: 'Fine-tune what triggers the webhook. Most users don\'t need these.',
                     options: [
                         {
-                            displayName: 'Change Types to Watch',
+                            displayName: 'Data Types',
                             name: 'dataTypes',
                             type: 'multiOptions',
                             options: [
@@ -196,13 +203,9 @@ class AirtableTrigger {
                                     value: 'anonymousUser',
                                     description: 'Changes by unauthenticated users (e.g. public forms)',
                                 },
-                                {
-                                    name: 'Unknown',
-                                    value: 'unknown',
-                                },
                             ],
                             default: [],
-                            description: 'Only trigger for changes from these sources. Leave empty to trigger on all sources (recommended).',
+                            description: 'Only trigger for changes from these sources. Leave empty to trigger on all sources. Tip: exclude "API" to prevent loops if your workflow writes back to Airtable.',
                         },
                         {
                             displayName: 'Source Options (JSON)',
@@ -210,7 +213,7 @@ class AirtableTrigger {
                             type: 'string',
                             default: '',
                             placeholder: '{"formSubmission":{"viewId":"viw..."}}',
-                            description: 'Advanced: filter form submissions by view ID or interface form submissions by page ID. JSON format. Most users don\'t need this.',
+                            description: 'Advanced: filter form submissions by view ID or interface form submissions by page ID. JSON format.',
                         },
                         {
                             displayName: 'Watch Field Schema Changes',
@@ -221,7 +224,7 @@ class AirtableTrigger {
                                 loadOptionsDependsOn: ['base', 'table'],
                             },
                             default: [],
-                            description: 'Trigger when the schema of these fields changes (e.g. field renamed, type changed, options modified). Requires "Field Schema" in Change Types above.',
+                            description: 'Trigger when the schema of these fields changes (e.g. field renamed, type changed). Requires "Field Schema" in Data Types above.',
                         },
                     ],
                 },
@@ -255,7 +258,7 @@ class AirtableTrigger {
                         return response.tables.map((table) => ({
                             name: table.name,
                             value: table.id,
-                            description: `${table.fields ? table.fields.length : 0} fields available`,
+                            description: `${table.fields ? table.fields.length : 0} fields`,
                         }));
                     }
                     catch (error) {
@@ -266,21 +269,26 @@ class AirtableTrigger {
                     const baseId = this.getNodeParameter('base', '');
                     const tableId = this.getNodeParameter('table', '');
                     if (!baseId || !tableId) {
-                        return [];
+                        return [{ name: '— All records (no view filter) —', value: '' }];
                     }
                     try {
                         const views = await GenericFunctions_1.getViews.call(this, baseId, tableId);
-                        if (!views || views.length === 0) {
-                            return [];
+                        const options = [
+                            { name: '— All records (no view filter) —', value: '' },
+                        ];
+                        if (views && views.length > 0) {
+                            for (const view of views) {
+                                options.push({
+                                    name: view.name,
+                                    value: view.id,
+                                    description: `Type: ${view.type}`,
+                                });
+                            }
                         }
-                        return views.map(view => ({
-                            name: view.name,
-                            value: view.id,
-                            description: `Type: ${view.type}`,
-                        }));
+                        return options;
                     }
                     catch (error) {
-                        return [];
+                        return [{ name: '— All records (no view filter) —', value: '' }];
                     }
                 },
                 async getFields() {
@@ -302,6 +310,32 @@ class AirtableTrigger {
                     }
                     catch (error) {
                         return [];
+                    }
+                },
+                async getFieldsWithAll() {
+                    const baseId = this.getNodeParameter('base', '');
+                    const tableId = this.getNodeParameter('table', '');
+                    if (!baseId || !tableId) {
+                        return [{ name: '— All fields —', value: '__all__' }];
+                    }
+                    try {
+                        const fields = await GenericFunctions_1.getFields.call(this, baseId, tableId);
+                        const options = [
+                            { name: '— All fields —', value: '__all__' },
+                        ];
+                        if (fields && fields.length > 0) {
+                            for (const field of fields) {
+                                options.push({
+                                    name: field.name,
+                                    value: field.id,
+                                    description: `Type: ${field.type}`,
+                                });
+                            }
+                        }
+                        return options;
+                    }
+                    catch (error) {
+                        return [{ name: '— All fields —', value: '__all__' }];
                     }
                 },
             },
@@ -335,33 +369,41 @@ class AirtableTrigger {
                     const tableId = this.getNodeParameter('table');
                     const viewId = this.getNodeParameter('view', '');
                     const fieldsToWatch = this.getNodeParameter('fieldsToWatch', []);
+                    const fieldsToInclude = this.getNodeParameter('fieldsToInclude', []);
                     const includePreviousValues = this.getNodeParameter('includePreviousValues');
                     const eventTypes = this.getNodeParameter('eventTypes', []);
                     try {
                         const endpoint = `/bases/${baseId}/webhooks`;
                         const additionalFields = this.getNodeParameter('additionalFields', {});
+                        const filters = {
+                            dataTypes: ['tableData'],
+                            recordChangeScope: viewId || tableId,
+                        };
+                        // Only add watchDataInFieldIds if specific fields selected
+                        if (fieldsToWatch && fieldsToWatch.length > 0) {
+                            filters.watchDataInFieldIds = fieldsToWatch;
+                        }
+                        const includes = {
+                            includePreviousCellValues: includePreviousValues,
+                        };
+                        // Handle fieldsToInclude — "__all__" means all fields
+                        if (fieldsToInclude && fieldsToInclude.length > 0) {
+                            if (fieldsToInclude.includes('__all__')) {
+                                includes.includeCellValuesInFieldIds = 'all';
+                            } else {
+                                includes.includeCellValuesInFieldIds = fieldsToInclude;
+                            }
+                        }
                         const body = {
                             notificationUrl: webhookUrl,
                             specification: {
                                 options: {
-                                    filters: {
-                                        dataTypes: ['tableData'],
-                                        recordChangeScope: viewId || tableId,
-                                        changeTypes: eventTypes,
-                                    },
-                                    includes: {
-                                        includePreviousCellValues: includePreviousValues
-                                    }
-                                }
-                            }
+                                    filters,
+                                    includes,
+                                },
+                            },
                         };
-                        if (fieldsToWatch && fieldsToWatch.length > 0) {
-                            body.specification.options.filters.watchDataInFieldIds = fieldsToWatch;
-                        }
-                        const fieldsToInclude = this.getNodeParameter('fieldsToInclude', []);
-                        if (fieldsToInclude && fieldsToInclude.length > 0) {
-                            body.specification.options.includes.includeCellValuesInFieldIds = fieldsToInclude;
-                        }
+                        // Advanced options
                         if (additionalFields.dataTypes && Array.isArray(additionalFields.dataTypes) && additionalFields.dataTypes.length > 0) {
                             body.specification.options.filters.dataTypes = additionalFields.dataTypes;
                         }
@@ -374,6 +416,7 @@ class AirtableTrigger {
                                 body.specification.options.filters.sourceOptions = sourceOptions;
                             }
                             catch (error) {
+                                // Invalid JSON — skip
                             }
                         }
                         if (additionalFields.watchSchemasOfFieldIds && Array.isArray(additionalFields.watchSchemasOfFieldIds) && additionalFields.watchSchemasOfFieldIds.length > 0) {
@@ -385,7 +428,7 @@ class AirtableTrigger {
                         webhookData.tableId = tableId;
                         webhookData.macSecretBase64 = response.macSecretBase64;
                         webhookData.lastCursor = 1;
-                        webhookData.fieldsToInclude = this.getNodeParameter('fieldsToInclude', []);
+                        webhookData.fieldsToInclude = fieldsToInclude;
                         webhookData.additionalFields = additionalFields;
                         webhookData.eventTypes = eventTypes;
                         return true;
@@ -420,7 +463,7 @@ class AirtableTrigger {
         };
     }
     async webhook() {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b;
         const req = this.getRequestObject();
         const webhookData = this.getWorkflowStaticData('node');
         if (!req.body || !req.body.base || !req.body.webhook) {
@@ -429,6 +472,23 @@ class AirtableTrigger {
         try {
             const baseId = req.body.base.id;
             const webhookId = req.body.webhook.id;
+            const useFieldNames = this.getNodeParameter('useFieldNames', true);
+            const eventTypes = webhookData.eventTypes || ['created', 'updated', 'deleted'];
+
+            // Build field ID → name map if needed
+            let fieldIdToName = {};
+            if (useFieldNames) {
+                try {
+                    const fields = await GenericFunctions_1.getFields.call(this, baseId, webhookData.tableId);
+                    for (const field of fields) {
+                        fieldIdToName[field.id] = field.name;
+                    }
+                } catch (e) {
+                    // Fall back to field IDs if schema fetch fails
+                }
+            }
+
+            // Fetch payloads using cursor
             const webhookEndpoint = `/bases/${baseId}/webhooks`;
             const webhooksResponse = await GenericFunctions_1.airtableApiRequest.call(this, 'GET', webhookEndpoint);
             let cursorForNextPayload = 1;
@@ -447,63 +507,133 @@ class AirtableTrigger {
             if (!payloadsResponse.payloads || payloadsResponse.payloads.length === 0) {
                 return {};
             }
-            const formattedPayloads = [];
-            const fieldsToInclude = webhookData.fieldsToInclude || [];
-            for (const payload of payloadsResponse.payloads) {
-                if (!payload.changedTablesById) {
-                    continue;
+
+            const resolveKey = (fieldId) => {
+                if (useFieldNames && fieldIdToName[fieldId]) {
+                    return fieldIdToName[fieldId];
                 }
-                for (const tableId in payload.changedTablesById) {
-                    if (!webhookData.tableId || tableId === webhookData.tableId) {
+                return fieldId;
+            };
+
+            const resolveCellValues = (cellValuesByFieldId) => {
+                if (!cellValuesByFieldId) return {};
+                const resolved = {};
+                for (const [fieldId, value] of Object.entries(cellValuesByFieldId)) {
+                    resolved[resolveKey(fieldId)] = value;
+                }
+                return resolved;
+            };
+
+            const extractChangedBy = (payload) => {
+                const meta = (_b = (_a = payload.actionMetadata) === null || _a === void 0 ? void 0 : _a.sourceMetadata) === null || _b === void 0 ? void 0 : _b.user;
+                if (!meta) return undefined;
+                return {
+                    userId: meta.id,
+                    userName: meta.name,
+                    userEmail: meta.email,
+                };
+            };
+
+            const formattedPayloads = [];
+            for (const payload of payloadsResponse.payloads) {
+                const source = payload.actionMetadata ? payload.actionMetadata.source : undefined;
+                const changedBy = extractChangedBy(payload);
+
+                // Process changedTablesById (updates, schema changes, metadata changes)
+                if (payload.changedTablesById) {
+                    for (const tableId in payload.changedTablesById) {
+                        if (webhookData.tableId && tableId !== webhookData.tableId) continue;
                         const tableData = payload.changedTablesById[tableId];
-                        if (tableData.changedRecordsById) {
-                            const changedRecords = tableData.changedRecordsById;
-                            const fieldInfos = (0, GenericFunctions_1.extractFieldInfo)(changedRecords, fieldsToInclude);
-                            for (const fieldInfo of fieldInfos) {
+
+                        // Record created
+                        if (tableData.createdRecordsById && eventTypes.includes('created')) {
+                            for (const recordId in tableData.createdRecordsById) {
+                                const record = tableData.createdRecordsById[recordId];
                                 formattedPayloads.push({
-                                    ...fieldInfo,
+                                    eventType: 'created',
+                                    recordId,
                                     tableId,
-                                    changedBy: ((_b = (_a = payload.actionMetadata) === null || _a === void 0 ? void 0 : _a.sourceMetadata) === null || _b === void 0 ? void 0 : _b.user) ? {
-                                        userId: payload.actionMetadata.sourceMetadata.user.id,
-                                        userName: payload.actionMetadata.sourceMetadata.user.name,
-                                        userEmail: payload.actionMetadata.sourceMetadata.user.email,
-                                    } : undefined,
+                                    createdTime: record.createdTime,
+                                    fields: resolveCellValues(record.cellValuesByFieldId),
+                                    source,
+                                    changedBy,
                                     timestamp: payload.timestamp,
                                 });
                             }
                         }
+
+                        // Record updated
+                        if (tableData.changedRecordsById && eventTypes.includes('updated')) {
+                            for (const recordId in tableData.changedRecordsById) {
+                                const recordData = tableData.changedRecordsById[recordId];
+                                const currentFields = resolveCellValues(recordData.current ? recordData.current.cellValuesByFieldId : null);
+                                const previousFields = resolveCellValues(recordData.previous ? recordData.previous.cellValuesByFieldId : null);
+                                const unchangedFields = resolveCellValues(recordData.unchanged ? recordData.unchanged.cellValuesByFieldId : null);
+
+                                // Build a list of which fields actually changed
+                                const changedFields = Object.keys(currentFields);
+
+                                formattedPayloads.push({
+                                    eventType: 'updated',
+                                    recordId,
+                                    tableId,
+                                    changedFields,
+                                    current: currentFields,
+                                    previous: previousFields,
+                                    unchanged: unchangedFields,
+                                    source,
+                                    changedBy,
+                                    timestamp: payload.timestamp,
+                                });
+                            }
+                        }
+
+                        // Record deleted
+                        if (tableData.destroyedRecordIds && eventTypes.includes('deleted')) {
+                            for (const recordId of tableData.destroyedRecordIds) {
+                                formattedPayloads.push({
+                                    eventType: 'deleted',
+                                    recordId,
+                                    tableId,
+                                    source,
+                                    changedBy,
+                                    timestamp: payload.timestamp,
+                                });
+                            }
+                        }
+
+                        // Field schema changes
                         if (tableData.changedFieldsById) {
                             const fieldSchemaInfos = (0, GenericFunctions_1.extractFieldSchemaInfo)(tableData.changedFieldsById);
-                            for (const fieldSchemaInfo of fieldSchemaInfos) {
+                            for (const info of fieldSchemaInfos) {
                                 formattedPayloads.push({
-                                    ...fieldSchemaInfo,
+                                    ...info,
                                     tableId,
-                                    changedBy: ((_d = (_c = payload.actionMetadata) === null || _c === void 0 ? void 0 : _c.sourceMetadata) === null || _d === void 0 ? void 0 : _d.user) ? {
-                                        userId: payload.actionMetadata.sourceMetadata.user.id,
-                                        userName: payload.actionMetadata.sourceMetadata.user.name,
-                                        userEmail: payload.actionMetadata.sourceMetadata.user.email,
-                                    } : undefined,
+                                    source,
+                                    changedBy,
                                     timestamp: payload.timestamp,
                                 });
                             }
                         }
+
+                        // Table metadata changes
                         if (tableData.changedMetadata) {
-                            const tableMetadataInfos = (0, GenericFunctions_1.extractTableMetadataInfo)(tableData.changedMetadata);
-                            for (const tableMetadataInfo of tableMetadataInfos) {
+                            const metadataInfos = (0, GenericFunctions_1.extractTableMetadataInfo)(tableData.changedMetadata);
+                            for (const info of metadataInfos) {
                                 formattedPayloads.push({
-                                    ...tableMetadataInfo,
+                                    ...info,
                                     tableId,
-                                    changedBy: ((_f = (_e = payload.actionMetadata) === null || _e === void 0 ? void 0 : _e.sourceMetadata) === null || _f === void 0 ? void 0 : _f.user) ? {
-                                        userId: payload.actionMetadata.sourceMetadata.user.id,
-                                        userName: payload.actionMetadata.sourceMetadata.user.name,
-                                        userEmail: payload.actionMetadata.sourceMetadata.user.email,
-                                    } : undefined,
+                                    source,
+                                    changedBy,
                                     timestamp: payload.timestamp,
                                 });
                             }
                         }
                     }
                 }
+            }
+            if (formattedPayloads.length === 0) {
+                return {};
             }
             return {
                 workflowData: [
@@ -521,4 +651,3 @@ class AirtableTrigger {
     }
 }
 exports.AirtableTrigger = AirtableTrigger;
-//# sourceMappingURL=AirtableTrigger.node.js.map
