@@ -2,3 +2,9 @@ node_modules/
 .env
 .npmrc
 *.tgz
+credentials.json
+*.har
+*.pem
+*.key
+GEMINI.md
+.gemini/settings.json
