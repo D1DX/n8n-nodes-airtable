@@ -64,6 +64,7 @@ class AirtableWebhookTrigger {
                 },
             ],
             properties: [
+                // ── Always visible ──────────────────────────────────────────
                 {
                     displayName: 'Base ID',
                     name: 'baseId',
@@ -85,7 +86,7 @@ class AirtableWebhookTrigger {
                         {
                             name: 'Table Fields',
                             value: 'tableFields',
-                            description: 'Field schema changes',
+                            description: 'Field schema changes (name, type)',
                         },
                         {
                             name: 'Table Metadata',
@@ -95,7 +96,7 @@ class AirtableWebhookTrigger {
                     ],
                     default: ['tableData'],
                     required: true,
-                    description: 'The types of data to watch for changes',
+                    description: 'Which types of changes to watch',
                 },
                 {
                     displayName: 'Change Types',
@@ -110,7 +111,7 @@ class AirtableWebhookTrigger {
                         {
                             name: 'Remove',
                             value: 'remove',
-                            description: 'Object was deleted',
+                            description: 'Object was deleted (or left a view)',
                         },
                         {
                             name: 'Update',
@@ -119,153 +120,183 @@ class AirtableWebhookTrigger {
                         },
                     ],
                     default: [],
-                    description: 'Only trigger for these change types. Leave empty to trigger for all types.',
+                    description: 'Only trigger for these change types. Leave empty for all.',
                 },
                 {
                     displayName: 'Record Change Scope',
                     name: 'recordChangeScope',
                     type: 'string',
                     default: '',
-                    description: 'Only watch for changes in this table or view (TableId or ViewId). Leave empty to watch the entire base.',
+                    description: 'Only watch changes in this table or view (TableId or ViewId). Leave empty for entire base. Form view and List view are not supported.',
+                },
+                // ── Table Data options (shown when tableData selected) ──────
+                {
+                    displayName: 'Watch Fields',
+                    name: 'watchDataInFieldIds',
+                    type: 'string',
+                    default: '',
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableData'],
+                        },
+                    },
+                    description: 'Only trigger when these fields change. Comma-separated field IDs (e.g. fldABC,fldDEF). Leave empty for all fields. Warning: webhook stops if a listed field is deleted.',
                 },
                 {
-                    displayName: 'Advanced Options',
-                    name: 'advancedOptions',
-                    type: 'collection',
-                    placeholder: 'Add Option',
-                    default: {},
+                    displayName: 'Include Cell Values',
+                    name: 'includeCellValues',
+                    type: 'options',
                     options: [
                         {
-                            displayName: 'From Sources',
-                            name: 'fromSources',
-                            type: 'multiOptions',
-                            options: [
-                                {
-                                    name: 'Anonymous User',
-                                    value: 'anonymousUser',
-                                },
-                                {
-                                    name: 'Automation',
-                                    value: 'automation',
-                                    description: 'Changes generated through an Airtable automation',
-                                },
-                                {
-                                    name: 'Client',
-                                    value: 'client',
-                                    description: 'Changes by a user through the web or mobile client',
-                                },
-                                {
-                                    name: 'Form Page Submission',
-                                    value: 'formPageSubmission',
-                                    description: 'Changes from interface form builder page submissions',
-                                },
-                                {
-                                    name: 'Form Submission',
-                                    value: 'formSubmission',
-                                    description: 'Changes from form view submissions',
-                                },
-                                {
-                                    name: 'Public API',
-                                    value: 'publicApi',
-                                    description: 'Changes via the Airtable REST API',
-                                },
-                                {
-                                    name: 'Sync',
-                                    value: 'sync',
-                                    description: 'Changes from Airtable Sync',
-                                },
-                                {
-                                    name: 'System',
-                                    value: 'system',
-                                    description: 'Changes from system events (e.g. formula recalculation)',
-                                },
-                                {
-                                    name: 'Unknown',
-                                    value: 'unknown',
-                                },
-                            ],
-                            default: [],
-                            description: 'Only trigger for changes from these sources. Leave empty for all sources.',
+                            name: 'Only Changed Fields',
+                            value: 'none',
+                            description: 'Default — payload only contains fields that changed',
                         },
                         {
-                            displayName: 'Form Submission View ID',
-                            name: 'formSubmissionViewId',
-                            type: 'string',
-                            default: '',
-                            description: 'Filter form view submissions to this specific ViewId (only applies when "Form Submission" is selected in From Sources)',
+                            name: 'All Fields',
+                            value: 'all',
+                            description: 'Always include every field value, even if unchanged',
                         },
                         {
-                            displayName: 'Form Page Submission Page ID',
-                            name: 'formPageSubmissionPageId',
-                            type: 'string',
-                            default: '',
-                            description: 'Filter interface page submissions to this specific PageId (only applies when "Form Page Submission" is selected in From Sources)',
-                        },
-                        {
-                            displayName: 'Watch Data In Field IDs',
-                            name: 'watchDataInFieldIds',
-                            type: 'string',
-                            default: '',
-                            description: 'Only trigger when cell values in these fields change. Comma-separated list of field IDs. Warning: if any listed field is deleted, the webhook enters an error state.',
-                        },
-                        {
-                            displayName: 'Watch Schemas Of Field IDs',
-                            name: 'watchSchemasOfFieldIds',
-                            type: 'string',
-                            default: '',
-                            description: 'Only trigger when the schema (name, type) of these fields changes. Comma-separated list of field IDs. Warning: if any listed field is deleted, the webhook enters an error state.',
-                        },
-                        {
-                            displayName: 'Include Cell Values',
-                            name: 'includeCellValuesInFieldIds',
-                            type: 'options',
-                            options: [
-                                {
-                                    name: 'None',
-                                    value: 'none',
-                                    description: 'Only include changed fields (default)',
-                                },
-                                {
-                                    name: 'All Fields',
-                                    value: 'all',
-                                    description: 'Include all field values in every payload',
-                                },
-                                {
-                                    name: 'Specific Fields',
-                                    value: 'specific',
-                                    description: 'Include specific field values regardless of whether they changed',
-                                },
-                            ],
-                            default: 'none',
-                            description: 'Include cell values for fields even if they did not change',
-                        },
-                        {
-                            displayName: 'Include Cell Values Field IDs',
-                            name: 'includeCellValuesFieldIds',
-                            type: 'string',
-                            default: '',
-                            displayOptions: {
-                                show: {
-                                    includeCellValuesInFieldIds: ['specific'],
-                                },
-                            },
-                            description: 'Comma-separated list of field IDs to include in every payload',
-                        },
-                        {
-                            displayName: 'Include Previous Cell Values',
-                            name: 'includePreviousCellValues',
-                            type: 'boolean',
-                            default: false,
-                            description: 'Whether to include the previous cell value alongside the current in record change payloads',
-                        },
-                        {
-                            displayName: 'Include Previous Field Definitions',
-                            name: 'includePreviousFieldDefinitions',
-                            type: 'boolean',
-                            default: false,
-                            description: 'Whether to include the previous field definition alongside the current in field change payloads',
+                            name: 'Specific Fields',
+                            value: 'specific',
+                            description: 'Always include specific fields, even if unchanged',
                         },
                     ],
+                    default: 'none',
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableData'],
+                        },
+                    },
+                    description: 'Which field values to include in every payload, regardless of whether they changed',
+                },
+                {
+                    displayName: 'Field IDs to Always Include',
+                    name: 'includeCellValuesFieldIds',
+                    type: 'string',
+                    default: '',
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableData'],
+                            includeCellValues: ['specific'],
+                        },
+                    },
+                    description: 'Comma-separated field IDs to always include (e.g. fldABC,fldDEF). Safe if a listed field is deleted — it is silently ignored.',
+                },
+                {
+                    displayName: 'Include Previous Cell Values',
+                    name: 'includePreviousCellValues',
+                    type: 'boolean',
+                    default: false,
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableData'],
+                        },
+                    },
+                    description: 'Whether to include the previous value of changed fields (useful for detecting what changed)',
+                },
+                // ── Table Fields options (shown when tableFields selected) ──
+                {
+                    displayName: 'Watch Field Schemas',
+                    name: 'watchSchemasOfFieldIds',
+                    type: 'string',
+                    default: '',
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableFields'],
+                        },
+                    },
+                    description: 'Only trigger when these field schemas change. Comma-separated field IDs. Leave empty for all. Warning: webhook stops if a listed field is deleted.',
+                },
+                {
+                    displayName: 'Include Previous Field Definitions',
+                    name: 'includePreviousFieldDefinitions',
+                    type: 'boolean',
+                    default: false,
+                    displayOptions: {
+                        show: {
+                            dataTypes: ['tableFields'],
+                        },
+                    },
+                    description: 'Whether to include the previous field name/type alongside the current in field change payloads',
+                },
+                // ── Source Filtering ────────────────────────────────────────
+                {
+                    displayName: 'From Sources',
+                    name: 'fromSources',
+                    type: 'multiOptions',
+                    options: [
+                        {
+                            name: 'Client',
+                            value: 'client',
+                            description: 'User action via web or mobile',
+                        },
+                        {
+                            name: 'Public API',
+                            value: 'publicApi',
+                            description: 'Airtable REST API',
+                        },
+                        {
+                            name: 'Form Submission',
+                            value: 'formSubmission',
+                            description: 'Form view submission',
+                        },
+                        {
+                            name: 'Form Page Submission',
+                            value: 'formPageSubmission',
+                            description: 'Interface form builder / record creation page',
+                        },
+                        {
+                            name: 'Automation',
+                            value: 'automation',
+                            description: 'Airtable automation action',
+                        },
+                        {
+                            name: 'System',
+                            value: 'system',
+                            description: 'System events (e.g. formula recalculation)',
+                        },
+                        {
+                            name: 'Sync',
+                            value: 'sync',
+                            description: 'Airtable Sync',
+                        },
+                        {
+                            name: 'Anonymous User',
+                            value: 'anonymousUser',
+                        },
+                        {
+                            name: 'Unknown',
+                            value: 'unknown',
+                        },
+                    ],
+                    default: [],
+                    description: 'Only trigger for changes from these sources. Leave empty for all.',
+                },
+                {
+                    displayName: 'Form Submission View ID',
+                    name: 'formSubmissionViewId',
+                    type: 'string',
+                    default: '',
+                    displayOptions: {
+                        show: {
+                            fromSources: ['formSubmission'],
+                        },
+                    },
+                    description: 'Only trigger for submissions from this specific form view (ViewId)',
+                },
+                {
+                    displayName: 'Form Page Submission Page ID',
+                    name: 'formPageSubmissionPageId',
+                    type: 'string',
+                    default: '',
+                    displayOptions: {
+                        show: {
+                            fromSources: ['formPageSubmission'],
+                        },
+                    },
+                    description: 'Only trigger for submissions from this specific interface page (PageId)',
                 },
             ],
         };
@@ -300,7 +331,8 @@ class AirtableWebhookTrigger {
                     const dataTypes = this.getNodeParameter('dataTypes', []);
                     const changeTypes = this.getNodeParameter('changeTypes', []);
                     const recordChangeScope = this.getNodeParameter('recordChangeScope', '');
-                    const advancedOptions = this.getNodeParameter('advancedOptions', {});
+                    const fromSources = this.getNodeParameter('fromSources', []);
+                    // Build filters
                     const filters = { dataTypes };
                     if (changeTypes.length > 0) {
                         filters.changeTypes = changeTypes;
@@ -308,49 +340,73 @@ class AirtableWebhookTrigger {
                     if (recordChangeScope) {
                         filters.recordChangeScope = recordChangeScope;
                     }
-                    if (advancedOptions.fromSources && advancedOptions.fromSources.length > 0) {
-                        filters.fromSources = advancedOptions.fromSources;
+                    if (fromSources.length > 0) {
+                        filters.fromSources = fromSources;
                     }
-                    // sourceOptions
+                    // sourceOptions (conditional on fromSources)
                     const sourceOptions = {};
-                    if (advancedOptions.formSubmissionViewId) {
-                        sourceOptions.formSubmission = { viewId: advancedOptions.formSubmissionViewId };
+                    if (fromSources.includes('formSubmission')) {
+                        const viewId = this.getNodeParameter('formSubmissionViewId', '');
+                        if (viewId) {
+                            sourceOptions.formSubmission = { viewId };
+                        }
                     }
-                    if (advancedOptions.formPageSubmissionPageId) {
-                        sourceOptions.formPageSubmission = { pageId: advancedOptions.formPageSubmissionPageId };
+                    if (fromSources.includes('formPageSubmission')) {
+                        const pageId = this.getNodeParameter('formPageSubmissionPageId', '');
+                        if (pageId) {
+                            sourceOptions.formPageSubmission = { pageId };
+                        }
                     }
                     if (Object.keys(sourceOptions).length > 0) {
                         filters.sourceOptions = sourceOptions;
                     }
-                    if (advancedOptions.watchDataInFieldIds) {
-                        const fieldIds = advancedOptions.watchDataInFieldIds.split(',').map(id => id.trim()).filter(Boolean);
-                        if (fieldIds.length > 0) {
-                            filters.watchDataInFieldIds = fieldIds;
+                    // tableData-specific filters
+                    if (dataTypes.includes('tableData')) {
+                        const watchDataInFieldIds = this.getNodeParameter('watchDataInFieldIds', '');
+                        if (watchDataInFieldIds) {
+                            const fieldIds = watchDataInFieldIds.split(',').map(id => id.trim()).filter(Boolean);
+                            if (fieldIds.length > 0) {
+                                filters.watchDataInFieldIds = fieldIds;
+                            }
                         }
                     }
-                    if (advancedOptions.watchSchemasOfFieldIds) {
-                        const fieldIds = advancedOptions.watchSchemasOfFieldIds.split(',').map(id => id.trim()).filter(Boolean);
-                        if (fieldIds.length > 0) {
-                            filters.watchSchemasOfFieldIds = fieldIds;
+                    // tableFields-specific filters
+                    if (dataTypes.includes('tableFields')) {
+                        const watchSchemasOfFieldIds = this.getNodeParameter('watchSchemasOfFieldIds', '');
+                        if (watchSchemasOfFieldIds) {
+                            const fieldIds = watchSchemasOfFieldIds.split(',').map(id => id.trim()).filter(Boolean);
+                            if (fieldIds.length > 0) {
+                                filters.watchSchemasOfFieldIds = fieldIds;
+                            }
                         }
                     }
+                    // Build includes
                     const includes = {};
-                    const includeCellValuesMode = advancedOptions.includeCellValuesInFieldIds || 'none';
-                    if (includeCellValuesMode === 'all') {
-                        includes.includeCellValuesInFieldIds = 'all';
-                    }
-                    else if (includeCellValuesMode === 'specific' && advancedOptions.includeCellValuesFieldIds) {
-                        const fieldIds = advancedOptions.includeCellValuesFieldIds.split(',').map(id => id.trim()).filter(Boolean);
-                        if (fieldIds.length > 0) {
-                            includes.includeCellValuesInFieldIds = fieldIds;
+                    if (dataTypes.includes('tableData')) {
+                        const includeCellValues = this.getNodeParameter('includeCellValues', 'none');
+                        if (includeCellValues === 'all') {
+                            includes.includeCellValuesInFieldIds = 'all';
+                        } else if (includeCellValues === 'specific') {
+                            const fieldIdsStr = this.getNodeParameter('includeCellValuesFieldIds', '');
+                            if (fieldIdsStr) {
+                                const fieldIds = fieldIdsStr.split(',').map(id => id.trim()).filter(Boolean);
+                                if (fieldIds.length > 0) {
+                                    includes.includeCellValuesInFieldIds = fieldIds;
+                                }
+                            }
+                        }
+                        const includePreviousCellValues = this.getNodeParameter('includePreviousCellValues', false);
+                        if (includePreviousCellValues) {
+                            includes.includePreviousCellValues = true;
                         }
                     }
-                    if (advancedOptions.includePreviousCellValues === true) {
-                        includes.includePreviousCellValues = true;
+                    if (dataTypes.includes('tableFields')) {
+                        const includePreviousFieldDefinitions = this.getNodeParameter('includePreviousFieldDefinitions', false);
+                        if (includePreviousFieldDefinitions) {
+                            includes.includePreviousFieldDefinitions = true;
+                        }
                     }
-                    if (advancedOptions.includePreviousFieldDefinitions === true) {
-                        includes.includePreviousFieldDefinitions = true;
-                    }
+                    // Build specification
                     const specification = { options: { filters } };
                     if (Object.keys(includes).length > 0) {
                         specification.options.includes = includes;
@@ -408,18 +464,18 @@ class AirtableWebhookTrigger {
                 return {};
             }
         }
-        // Parse payload into flat per-record/per-event items
+        // Parse payload into flat per-event items
         try {
             const items = [];
             const source = body.actionMetadata && body.actionMetadata.source;
-            const changedBy = body.actionMetadata && body.actionMetadata.sourceMetadata
-                ? body.actionMetadata.sourceMetadata.user || body.actionMetadata.sourceMetadata
-                : undefined;
+            const sourceMetadata = body.actionMetadata && body.actionMetadata.sourceMetadata;
             const timestamp = body.timestamp;
             const baseTransactionNumber = body.baseTransactionNumber;
+            // Process changed tables
             if (body.changedTablesById) {
                 for (const tableId of Object.keys(body.changedTablesById)) {
                     const tableData = body.changedTablesById[tableId];
+                    // ── tableData: records ──────────────────────────────────
                     // Created records
                     if (tableData.createdRecordsById) {
                         for (const recordId of Object.keys(tableData.createdRecordsById)) {
@@ -431,7 +487,7 @@ class AirtableWebhookTrigger {
                                 createdTime: record.createdTime,
                                 fields: record.cellValuesByFieldId || {},
                                 source,
-                                changedBy,
+                                sourceMetadata,
                                 timestamp,
                                 baseTransactionNumber,
                             });
@@ -441,18 +497,23 @@ class AirtableWebhookTrigger {
                     if (tableData.changedRecordsById) {
                         for (const recordId of Object.keys(tableData.changedRecordsById)) {
                             const recordData = tableData.changedRecordsById[recordId];
-                            items.push({
+                            const item = {
                                 eventType: 'update',
                                 recordId,
                                 tableId,
                                 current: recordData.current ? recordData.current.cellValuesByFieldId || {} : {},
-                                previous: recordData.previous ? recordData.previous.cellValuesByFieldId || {} : undefined,
-                                unchanged: recordData.unchanged ? recordData.unchanged.cellValuesByFieldId || {} : undefined,
                                 source,
-                                changedBy,
+                                sourceMetadata,
                                 timestamp,
                                 baseTransactionNumber,
-                            });
+                            };
+                            if (recordData.previous) {
+                                item.previous = recordData.previous.cellValuesByFieldId || {};
+                            }
+                            if (recordData.unchanged) {
+                                item.unchanged = recordData.unchanged.cellValuesByFieldId || {};
+                            }
+                            items.push(item);
                         }
                     }
                     // Deleted records
@@ -463,13 +524,13 @@ class AirtableWebhookTrigger {
                                 recordId,
                                 tableId,
                                 source,
-                                changedBy,
+                                sourceMetadata,
                                 timestamp,
                                 baseTransactionNumber,
                             });
                         }
                     }
-                    // View-scoped changes (when recordChangeScope is a view)
+                    // ── View-scoped record changes ──────────────────────────
                     if (tableData.changedViewsById) {
                         for (const viewId of Object.keys(tableData.changedViewsById)) {
                             const viewData = tableData.changedViewsById[viewId];
@@ -484,7 +545,7 @@ class AirtableWebhookTrigger {
                                         createdTime: record.createdTime,
                                         fields: record.cellValuesByFieldId || {},
                                         source,
-                                        changedBy,
+                                        sourceMetadata,
                                         timestamp,
                                         baseTransactionNumber,
                                     });
@@ -493,19 +554,24 @@ class AirtableWebhookTrigger {
                             if (viewData.changedRecordsById) {
                                 for (const recordId of Object.keys(viewData.changedRecordsById)) {
                                     const recordData = viewData.changedRecordsById[recordId];
-                                    items.push({
+                                    const item = {
                                         eventType: 'update',
                                         recordId,
                                         tableId,
                                         viewId,
                                         current: recordData.current ? recordData.current.cellValuesByFieldId || {} : {},
-                                        previous: recordData.previous ? recordData.previous.cellValuesByFieldId || {} : undefined,
-                                        unchanged: recordData.unchanged ? recordData.unchanged.cellValuesByFieldId || {} : undefined,
                                         source,
-                                        changedBy,
+                                        sourceMetadata,
                                         timestamp,
                                         baseTransactionNumber,
-                                    });
+                                    };
+                                    if (recordData.previous) {
+                                        item.previous = recordData.previous.cellValuesByFieldId || {};
+                                    }
+                                    if (recordData.unchanged) {
+                                        item.unchanged = recordData.unchanged.cellValuesByFieldId || {};
+                                    }
+                                    items.push(item);
                                 }
                             }
                             if (viewData.destroyedRecordIds) {
@@ -516,7 +582,7 @@ class AirtableWebhookTrigger {
                                         tableId,
                                         viewId,
                                         source,
-                                        changedBy,
+                                        sourceMetadata,
                                         timestamp,
                                         baseTransactionNumber,
                                     });
@@ -524,24 +590,94 @@ class AirtableWebhookTrigger {
                             }
                         }
                     }
+                    // ── tableFields: field schema changes ───────────────────
+                    if (tableData.createdFieldsById) {
+                        for (const fieldId of Object.keys(tableData.createdFieldsById)) {
+                            const field = tableData.createdFieldsById[fieldId];
+                            items.push({
+                                eventType: 'add',
+                                objectType: 'field',
+                                fieldId,
+                                tableId,
+                                name: field.name,
+                                type: field.type,
+                                source,
+                                sourceMetadata,
+                                timestamp,
+                                baseTransactionNumber,
+                            });
+                        }
+                    }
+                    if (tableData.changedFieldsById) {
+                        for (const fieldId of Object.keys(tableData.changedFieldsById)) {
+                            const fieldData = tableData.changedFieldsById[fieldId];
+                            const item = {
+                                eventType: 'update',
+                                objectType: 'field',
+                                fieldId,
+                                tableId,
+                                current: fieldData.current,
+                                source,
+                                sourceMetadata,
+                                timestamp,
+                                baseTransactionNumber,
+                            };
+                            if (fieldData.previous) {
+                                item.previous = fieldData.previous;
+                            }
+                            items.push(item);
+                        }
+                    }
+                    if (tableData.destroyedFieldIds) {
+                        for (const fieldId of tableData.destroyedFieldIds) {
+                            items.push({
+                                eventType: 'remove',
+                                objectType: 'field',
+                                fieldId,
+                                tableId,
+                                source,
+                                sourceMetadata,
+                                timestamp,
+                                baseTransactionNumber,
+                            });
+                        }
+                    }
+                    // ── tableMetadata: table name/description changes ───────
+                    if (tableData.changedMetadata) {
+                        const item = {
+                            eventType: 'update',
+                            objectType: 'tableMetadata',
+                            tableId,
+                            current: tableData.changedMetadata.current,
+                            previous: tableData.changedMetadata.previous,
+                            source,
+                            sourceMetadata,
+                            timestamp,
+                            baseTransactionNumber,
+                        };
+                        items.push(item);
+                    }
                 }
             }
-            // Created tables
+            // Process created tables
             if (body.createdTablesById) {
                 for (const tableId of Object.keys(body.createdTablesById)) {
+                    const table = body.createdTablesById[tableId];
                     items.push({
                         eventType: 'add',
                         objectType: 'table',
                         tableId,
-                        metadata: body.createdTablesById[tableId].metadata,
+                        metadata: table.metadata,
+                        fieldsById: table.fieldsById,
+                        recordsById: table.recordsById,
                         source,
-                        changedBy,
+                        sourceMetadata,
                         timestamp,
                         baseTransactionNumber,
                     });
                 }
             }
-            // Destroyed tables
+            // Process destroyed tables
             if (body.destroyedTableIds) {
                 for (const tableId of body.destroyedTableIds) {
                     items.push({
@@ -549,7 +685,7 @@ class AirtableWebhookTrigger {
                         objectType: 'table',
                         tableId,
                         source,
-                        changedBy,
+                        sourceMetadata,
                         timestamp,
                         baseTransactionNumber,
                     });
@@ -559,13 +695,13 @@ class AirtableWebhookTrigger {
             if (body.error) {
                 items.push({
                     eventType: 'error',
+                    error: true,
                     code: body.code,
                     timestamp,
                     baseTransactionNumber,
                 });
             }
             if (items.length === 0) {
-                // Unknown payload shape — pass raw body
                 return {
                     workflowData: [this.helpers.returnJsonArray(body)],
                 };
@@ -575,7 +711,6 @@ class AirtableWebhookTrigger {
             };
         }
         catch (error) {
-            // Parse failure — pass raw body
             return {
                 workflowData: [this.helpers.returnJsonArray(body)],
             };
