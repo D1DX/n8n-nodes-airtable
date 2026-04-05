@@ -377,8 +377,11 @@ class AirtableTrigger {
         this.webhookMethods = {
             default: {
                 async checkExists() {
+                    console.log('[AirtableTrigger] checkExists() called');
                     const webhookData = this.getWorkflowStaticData('node');
+                    console.log('[AirtableTrigger] webhookId:', webhookData.webhookId);
                     if (webhookData.webhookId === undefined) {
+                        console.log('[AirtableTrigger] no webhookId, returning false');
                         return false;
                     }
                     try {
@@ -397,9 +400,12 @@ class AirtableTrigger {
                     }
                 },
                 async create() {
+                    console.log('[AirtableTrigger] create() called');
                     const webhookUrl = this.getNodeWebhookUrl('default');
+                    console.log('[AirtableTrigger] webhookUrl:', webhookUrl);
                     const webhookData = this.getWorkflowStaticData('node');
                     const baseId = this.getNodeParameter('base');
+                    console.log('[AirtableTrigger] baseId:', baseId);
                     const tableId = this.getNodeParameter('table');
                     const viewId = this.getNodeParameter('view', '');
                     const fieldsToWatch = this.getNodeParameter('fieldsToWatch', []);
@@ -471,7 +477,9 @@ class AirtableTrigger {
                                 },
                             },
                         };
+                        console.log('[AirtableTrigger] registering webhook, body:', JSON.stringify(body, null, 2));
                         const response = await GenericFunctions_1.airtableApiRequest.call(this, 'POST', endpoint, body);
+                        console.log('[AirtableTrigger] webhook created:', response.id);
                         webhookData.webhookId = response.id;
                         webhookData.baseId = baseId;
                         webhookData.tableId = tableId;
@@ -483,6 +491,7 @@ class AirtableTrigger {
                         return true;
                     }
                     catch (error) {
+                        console.log('[AirtableTrigger] create() error:', error.message || error);
                         throw error;
                     }
                 },
@@ -515,7 +524,9 @@ class AirtableTrigger {
         var _a, _b;
         const req = this.getRequestObject();
         const webhookData = this.getWorkflowStaticData('node');
+        console.log('[AirtableTrigger] webhook() called, body:', JSON.stringify(req.body));
         if (!req.body || !req.body.base || !req.body.webhook) {
+            console.log('[AirtableTrigger] webhook() rejected — missing base or webhook in body');
             return {};
         }
         try {
