@@ -600,6 +600,7 @@ class AirtableTrigger {
 
             const formattedPayloads = [];
             for (const payload of payloadsResponse.payloads) {
+                console.log("[AirtableTrigger] raw payload:", JSON.stringify(payload));
                 const source = payload.actionMetadata ? payload.actionMetadata.source : undefined;
                 const changedBy = extractChangedBy(payload);
 
