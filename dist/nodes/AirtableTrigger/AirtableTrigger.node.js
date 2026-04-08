@@ -523,6 +523,14 @@ class AirtableTrigger {
             const webhookId = req.body.webhook.id;
             const useFieldNames = this.getNodeParameter('useFieldNames', true);
             const eventTypes = webhookData.eventTypes || ['created', 'updated', 'deleted'];
+            // v2.3.2: respect the user's Data Types selection when emitting events.
+            // Schema/metadata events were previously emitted unconditionally, which
+            // broke downstream workflows expecting only row events.
+            const dataTypes = (webhookData.additionalFields && Array.isArray(webhookData.additionalFields.dataTypes) && webhookData.additionalFields.dataTypes.length > 0)
+                ? webhookData.additionalFields.dataTypes
+                : ['tableData'];
+            const emitTableFields = dataTypes.includes('tableFields');
+            const emitTableMetadata = dataTypes.includes('tableMetadata');
 
             // Build field ID → name map if needed
             let fieldIdToName = {};
@@ -707,7 +715,7 @@ class AirtableTrigger {
                         }
 
                         // Field schema changes (tableFields dataType)
-                        if (tableData.createdFieldsById) {
+                        if (emitTableFields && tableData.createdFieldsById) {
                             for (const fieldId in tableData.createdFieldsById) {
                                 const field = tableData.createdFieldsById[fieldId];
                                 formattedPayloads.push({
@@ -722,7 +730,7 @@ class AirtableTrigger {
                                 });
                             }
                         }
-                        if (tableData.changedFieldsById) {
+                        if (emitTableFields && tableData.changedFieldsById) {
                             for (const fieldId in tableData.changedFieldsById) {
                                 const fieldData = tableData.changedFieldsById[fieldId];
                                 const item = {
@@ -740,7 +748,7 @@ class AirtableTrigger {
                                 formattedPayloads.push(item);
                             }
                         }
-                        if (tableData.destroyedFieldIds) {
+                        if (emitTableFields && tableData.destroyedFieldIds) {
                             for (const fieldId of tableData.destroyedFieldIds) {
                                 formattedPayloads.push({
                                     eventType: 'fieldDeleted',
@@ -754,7 +762,7 @@ class AirtableTrigger {
                         }
 
                         // Table metadata changes (tableMetadata dataType)
-                        if (tableData.changedMetadata) {
+                        if (emitTableMetadata && tableData.changedMetadata) {
                             formattedPayloads.push({
                                 eventType: 'metadataChanged',
                                 tableId,
